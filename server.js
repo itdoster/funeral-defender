@@ -11,6 +11,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const TARGET_URL = process.env.TARGET_URL || 'https://pohorony-minsk.by';
 
+// Настройка trust proxy для работы с заголовками от nginx
+app.set('trust proxy', true);
+
 // Security middleware
 app.use(helmet());
 app.use(cors());
@@ -192,6 +195,16 @@ app.listen(PORT, () => {
     console.log(`⏰ Ban duration: ${process.env.BAN_DURATION_HOURS || 4} hours`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
     console.log(`📊 Admin endpoint: http://localhost:${PORT}/admin/ip/[IP_ADDRESS]`);
+    console.log(`\n📋 Environment Configuration:`);
+    console.log(`   DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
+    console.log(`   DB_PORT: ${process.env.DB_PORT || '5432'}`);
+    console.log(`   DB_NAME: ${process.env.DB_NAME || 'funeral_defender'}`);
+    console.log(`   TARGET_URL: ${process.env.TARGET_URL || 'https://pohorony-minsk.by'}`);
+    console.log(`   BAN_DURATION_HOURS: ${process.env.BAN_DURATION_HOURS || '4'}`);
+    console.log(`   REDIRECT_DELAY_MS: ${process.env.REDIRECT_DELAY_MS || '1000'}`);
+    console.log(`   ALLOW_SEARCH_BOTS: ${process.env.ALLOW_SEARCH_BOTS || 'true'}`);
+    console.log(`   DOMAIN: ${process.env.DOMAIN || 'not set'}`);
+    console.log(`   Trust Proxy: ${app.get('trust proxy')}`);
 });
 
 // Graceful shutdown
