@@ -66,25 +66,21 @@ app.use(async (req, res, next) => {
         // Track the IP
         const ipData = await ipTracker.trackIP(clientIP, userAgent);
         
-        // If IP is banned, start infinite redirect loop
+        // If IP is banned, return 403 Forbidden
         if (ipData.isBanned) {
-            console.log(`🚫 Banned IP detected: ${clientIP}, redirecting to infinite loop`);
+            console.log(`🚫 Banned IP detected: ${clientIP}, returning 403 Forbidden`);
             
             // Log the redirect to console only
             ipTracker.logRedirect(clientIP, userAgent);
             
-            // Get redirect count for this IP (random number for unique URLs)
-            const redirectCount = await ipTracker.getRedirectCount(clientIP);
-            
-            // Create a redirect URL that will trigger another redirect
-            const redirectUrl = `/redirect-${redirectCount}`;
-            
-            // Set a delay before redirect
-            setTimeout(() => {
-                res.redirect(302, redirectUrl);
-            }, parseInt(process.env.REDIRECT_DELAY_MS) || 1000);
-            
-            return;
+            // Return 403 Forbidden instead of redirect loop
+            return res.status(403).json({
+                error: 'Ошибка',
+                message: 'Что-то пошло не так, попробуйте позже',
+                banned: true,
+                ip: clientIP,
+                timestamp: new Date().toISOString()
+            });
         }
         
         // Log IP tracking info
