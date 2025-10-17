@@ -149,6 +149,7 @@ app.get('/health', (req, res) => {
 const proxyOptions = {
     target: TARGET_URL,
     changeOrigin: true,
+    followRedirects: false, // Отключаем автоматические редиректы
     onProxyReq: (proxyReq, req, res) => {
         // Forward original IP
         proxyReq.setHeader('X-Forwarded-For', req.clientIP || getRealIP(req));
@@ -156,7 +157,7 @@ const proxyOptions = {
         
         // Устанавливаем правильный Host заголовок для Тильды
         // Тильда ожидает свой домен в Host заголовке
-        proxyReq.setHeader('Host', 'pohorony-minsk.by');
+        proxyReq.setHeader('Host', 'pohorony-minsk.tilda.ws');
         
         // Передаем оригинальный Referer если есть
         if (req.headers.referer) {

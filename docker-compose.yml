@@ -35,7 +35,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: ${DB_PASSWORD:-secure_password_123}
       PORT: 3000
-      TARGET_URL: ${TARGET_URL:-http://45.155.60.8}
+      TARGET_URL: ${TARGET_URL:-https://pohorony-minsk.tilda.ws}
       # Bot Protection Settings
       BAN_DURATION_HOURS: ${BAN_DURATION_HOURS:-4}
       REDIRECT_DELAY_MS: ${REDIRECT_DELAY_MS:-1000}
