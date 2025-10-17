@@ -1,5 +1,6 @@
--- Create database (run this manually first)
--- CREATE DATABASE funeral_defender;
+-- Create database if not exists
+SELECT 'CREATE DATABASE funeral_defender'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'funeral_defender')\gexec
 
 -- Create table for tracking IP addresses
 CREATE TABLE IF NOT EXISTS ip_tracking (
