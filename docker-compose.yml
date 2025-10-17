@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: funeral-defender-db
+    environment:
+      POSTGRES_DB: funeral_defender
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password_123}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - funeral-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d funeral_defender"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Funeral Defender Proxy Server
+  app:
+    build: .
+    container_name: funeral-defender-app
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: funeral_defender
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-secure_password_123}
+      PORT: 3000
+      TARGET_URL: ${TARGET_URL:-http://45.155.60.8}
+      # Bot Protection Settings
+      BAN_DURATION_HOURS: ${BAN_DURATION_HOURS:-4}
+      REDIRECT_DELAY_MS: ${REDIRECT_DELAY_MS:-1000}
+      ALLOW_SEARCH_BOTS: ${ALLOW_SEARCH_BOTS:-true}  # Allow Google, Yandex, Bing bots
+      SECRET_KEY: ${SECRET_KEY:-your_secret_key_here}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - funeral-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx Reverse Proxy (Optional - for production)
+  nginx:
+    image: nginx:alpine
+    container_name: funeral-defender-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - funeral-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  funeral-network:
+    driver: bridge
