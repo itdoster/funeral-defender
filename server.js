@@ -20,11 +20,11 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://static.tildacdn.biz"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://static.tildacdn.biz"],
-            imgSrc: ["'self'", "data:", "https://static.tildacdn.biz", "https://tilda.ws"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://static.tildacdn.biz"],
-            connectSrc: ["'self'", "https://pohorony-minsk.tilda.ws"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://static.tildacdn.biz", "https://tildacdn.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://static.tildacdn.biz", "https://tildacdn.com"],
+            imgSrc: ["'self'", "data:", "https://static.tildacdn.biz", "https://tildacdn.com", "https://tilda.ws"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://static.tildacdn.biz", "https://tildacdn.com"],
+            connectSrc: ["'self'", "https://pohorony-minsk.tilda.ws", "https://sysstat.tildacdn.com", "https://stat.tildaapi.biz", "https://tildacdn.com", "https://tildaapi.biz"],
             frameSrc: ["'self'", "https://static.tildacdn.biz"],
             objectSrc: ["'none'"],
             upgradeInsecureRequests: []
