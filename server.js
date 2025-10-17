@@ -154,7 +154,17 @@ const proxyOptions = {
         proxyReq.setHeader('X-Forwarded-For', req.clientIP || getRealIP(req));
         proxyReq.setHeader('X-Real-IP', req.clientIP || getRealIP(req));
         
+        // Устанавливаем правильный Host заголовок для Тильды
+        // Тильда ожидает свой домен в Host заголовке
+        proxyReq.setHeader('Host', 'pohorony-minsk.by');
+        
+        // Передаем оригинальный Referer если есть
+        if (req.headers.referer) {
+            proxyReq.setHeader('Referer', req.headers.referer);
+        }
+        
         console.log(`✅ Proxying request for IP: ${req.clientIP || getRealIP(req)}`);
+        console.log(`🎯 Target: ${TARGET_URL}, Host: pohorony-minsk.by`);
     },
     onError: (err, req, res) => {
         console.error('Proxy error:', err);
