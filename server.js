@@ -16,7 +16,21 @@ const TARGET_URL = process.env.TARGET_URL || 'https://pohorony-minsk.by';
 app.set('trust proxy', ['127.0.0.1', '::1', '172.16.0.0/12', '10.0.0.0/8']);
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://static.tildacdn.biz"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://static.tildacdn.biz"],
+            imgSrc: ["'self'", "data:", "https://static.tildacdn.biz", "https://tilda.ws"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://static.tildacdn.biz"],
+            connectSrc: ["'self'", "https://pohorony-minsk.tilda.ws"],
+            frameSrc: ["'self'", "https://static.tildacdn.biz"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: []
+        }
+    }
+}));
 app.use(cors());
 
 // Rate limiting
