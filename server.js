@@ -15,50 +15,22 @@ const TARGET_URL = process.env.TARGET_URL || 'https://pohorony-minsk.by';
 // Указываем конкретные IP адреса прокси-серверов
 app.set('trust proxy', ['127.0.0.1', '::1', '172.16.0.0/12', '10.0.0.0/8']);
 
-// Security middleware
+// Security middleware - все отключено
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://static.tildacdn.biz", "https://tildacdn.com"],
-            scriptSrc: [
-                "'self'", 
-                "'unsafe-inline'", 
-                "https://static.tildacdn.biz", 
-                "https://tildacdn.com",
-                "https://neo.tildacdn.com",
-                "https://www.googletagmanager.com",
-                "https://www.google-analytics.com",
-                "https://stat1.clickfraud.dev",
-                "https://myreviews.dev",
-                "https://mc.yandex.ru",
-                "https://yandex.ru"
-            ],
-            imgSrc: [
-                "'self'", 
-                "data:", 
-                "https://static.tildacdn.biz", 
-                "https://static.tildacdn.com",
-                "https://thb.tildacdn.biz",
-                "https://tildacdn.com", 
-                "https://tilda.ws",
-                "https://neo.tildacdn.com",
-                "https://www.google-analytics.com",
-                "https://mc.yandex.ru"
-            ],
-            fontSrc: [
-                "'self'", 
-                "https://fonts.gstatic.com", 
-                "https://static.tildacdn.biz", 
-                "https://static.tildacdn.com",
-                "https://tildacdn.com"
-            ],
-            connectSrc: ["'self'", "https://pohorony-minsk.tilda.ws", "https://sysstat.tildacdn.com", "https://stat.tildaapi.biz", "https://tildacdn.com", "https://tildaapi.biz"],
-            frameSrc: ["'self'", "https://static.tildacdn.biz"],
-            objectSrc: ["'none'"],
-            upgradeInsecureRequests: []
-        }
-    }
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    dnsPrefetchControl: false,
+    frameguard: false,
+    hidePoweredBy: false,
+    hsts: false,
+    ieNoOpen: false,
+    noSniff: false,
+    originAgentCluster: false,
+    permittedCrossDomainPolicies: false,
+    referrerPolicy: false,
+    xssFilter: false
 }));
 app.use(cors());
 
