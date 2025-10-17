@@ -57,11 +57,16 @@ setup_ssl() {
     if ! command -v certbot &> /dev/null; then
         echo "📦 Устанавливаем Certbot..."
         sudo apt update
-        sudo apt install -y certbot nginx
+        sudo apt install -y certbot
     fi
     
-    # Остановка nginx для получения сертификата
-    sudo systemctl stop nginx 2>/dev/null || true
+    # Временно запускаем только приложение без nginx для получения сертификата
+    echo "🚀 Запускаем приложение для получения SSL сертификата..."
+    docker-compose up -d app postgres
+    
+    # Ждем запуска приложения
+    echo "⏳ Ожидаем запуска приложения..."
+    sleep 15
     
     # Получение SSL сертификата
     echo "🔐 Получаем SSL сертификат от Let's Encrypt..."
@@ -81,7 +86,10 @@ setup_ssl() {
         echo "🔄 Настраиваем автоматическое обновление сертификата..."
         (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet && docker-compose restart nginx") | crontab -
         
-        echo "✅ SSL настроен! Запускаем с HTTPS..."
+        # Остановка временных контейнеров
+        docker-compose down
+        
+        echo "✅ SSL настроен! Запускаем с HTTPS и Nginx..."
         docker-compose --profile production up -d
         
     else
@@ -92,6 +100,7 @@ setup_ssl() {
         echo "   3. DNS записи настроены правильно"
         echo ""
         echo "🔄 Запускаем без SSL..."
+        docker-compose down
         docker-compose up -d
     fi
 }
