@@ -53,6 +53,24 @@ setup_ssl() {
     
     echo "🌐 Настраиваем SSL для домена: $DOMAIN"
     
+    # Проверяем, что домен указывает на этот сервер
+    echo "🔍 Проверяем DNS записи..."
+    DOMAIN_IP=$(nslookup $DOMAIN | grep -A1 "Name:" | tail -1 | awk '{print $2}')
+    SERVER_IP=$(curl -s ifconfig.me || curl -s ipinfo.io/ip)
+    
+    if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
+        echo "❌ ОШИБКА: Домен $DOMAIN указывает на $DOMAIN_IP, а не на этот сервер $SERVER_IP"
+        echo "   Сначала настройте DNS:"
+        echo "   A-запись: $DOMAIN → $SERVER_IP"
+        echo "   Подождите 5-10 минут и запустите скрипт снова"
+        echo ""
+        echo "🔄 Запускаем без SSL..."
+        docker-compose up -d
+        return
+    fi
+    
+    echo "✅ DNS настроен правильно: $DOMAIN → $DOMAIN_IP"
+    
     # Установка Certbot если не установлен
     if ! command -v certbot &> /dev/null; then
         echo "📦 Устанавливаем Certbot..."
