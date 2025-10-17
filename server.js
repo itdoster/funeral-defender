@@ -12,7 +12,8 @@ const PORT = process.env.PORT || 3000;
 const TARGET_URL = process.env.TARGET_URL || 'https://pohorony-minsk.by';
 
 // Настройка trust proxy для работы с заголовками от nginx
-app.set('trust proxy', true);
+// Указываем конкретные IP адреса прокси-серверов
+app.set('trust proxy', ['127.0.0.1', '::1', '172.16.0.0/12', '10.0.0.0/8']);
 
 // Security middleware
 app.use(helmet());
@@ -160,7 +161,14 @@ const proxyOptions = {
         
         // Устанавливаем правильный Host заголовок для Тильды
         // Тильда ожидает свой домен в Host заголовке
-        proxyReq.setHeader('Host', 'pohorony-minsk.tilda.ws');
+        proxyReq.setHeader('Host', 'pohorony-minsk.by');
+        
+        // Добавляем заголовки для совместимости с Тильдой
+        proxyReq.setHeader('User-Agent', req.headers['user-agent'] || 'Mozilla/5.0 (compatible; Funeral-Defender/1.0)');
+        proxyReq.setHeader('Accept', req.headers.accept || 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
+        proxyReq.setHeader('Accept-Language', req.headers['accept-language'] || 'en-US,en;q=0.5');
+        proxyReq.setHeader('Accept-Encoding', req.headers['accept-encoding'] || 'gzip, deflate');
+        proxyReq.setHeader('Connection', 'keep-alive');
         
         // Передаем оригинальный Referer если есть
         if (req.headers.referer) {
