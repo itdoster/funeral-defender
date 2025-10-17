@@ -15,6 +15,7 @@ docker-compose down 2>/dev/null || true
 # Сборка и запуск контейнеров
 echo "🔨 Собираем контейнеры..."
 docker-compose build
+docker-compose up -d
 
 # Проверяем, нужно ли настроить SSL
 if [ -f .env ] && grep -q "DOMAIN=" .env; then
