@@ -108,7 +108,7 @@ setup_ssl() {
         docker-compose down
         
         echo "✅ SSL настроен! Запускаем с HTTPS и Nginx..."
-        docker-compose --profile production up -d
+        docker-compose up -d
         
     else
         echo "❌ Ошибка получения SSL сертификата"

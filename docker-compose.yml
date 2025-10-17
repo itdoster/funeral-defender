@@ -56,7 +56,7 @@ services:
       retries: 3
       start_period: 40s
 
-  # Nginx Reverse Proxy (Optional - for production)
+  # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
     container_name: funeral-defender-nginx
@@ -71,8 +71,6 @@ services:
     networks:
       - funeral-network
     restart: unless-stopped
-    profiles:
-      - production
 
 volumes:
   postgres_data:
