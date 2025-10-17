@@ -21,9 +21,38 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://static.tildacdn.biz", "https://tildacdn.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://static.tildacdn.biz", "https://tildacdn.com"],
-            imgSrc: ["'self'", "data:", "https://static.tildacdn.biz", "https://tildacdn.com", "https://tilda.ws"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://static.tildacdn.biz", "https://tildacdn.com"],
+            scriptSrc: [
+                "'self'", 
+                "'unsafe-inline'", 
+                "https://static.tildacdn.biz", 
+                "https://tildacdn.com",
+                "https://neo.tildacdn.com",
+                "https://www.googletagmanager.com",
+                "https://www.google-analytics.com",
+                "https://stat1.clickfraud.dev",
+                "https://myreviews.dev",
+                "https://mc.yandex.ru",
+                "https://yandex.ru"
+            ],
+            imgSrc: [
+                "'self'", 
+                "data:", 
+                "https://static.tildacdn.biz", 
+                "https://static.tildacdn.com",
+                "https://thb.tildacdn.biz",
+                "https://tildacdn.com", 
+                "https://tilda.ws",
+                "https://neo.tildacdn.com",
+                "https://www.google-analytics.com",
+                "https://mc.yandex.ru"
+            ],
+            fontSrc: [
+                "'self'", 
+                "https://fonts.gstatic.com", 
+                "https://static.tildacdn.biz", 
+                "https://static.tildacdn.com",
+                "https://tildacdn.com"
+            ],
             connectSrc: ["'self'", "https://pohorony-minsk.tilda.ws", "https://sysstat.tildacdn.com", "https://stat.tildaapi.biz", "https://tildacdn.com", "https://tildaapi.biz"],
             frameSrc: ["'self'", "https://static.tildacdn.biz"],
             objectSrc: ["'none'"],
