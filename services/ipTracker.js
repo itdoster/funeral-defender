@@ -45,6 +45,11 @@ class IPTracker {
                 return true;
             }
             
+            // Google IP диапазон 72.14.*
+            if (ipParts[0] === '72' && ipParts[1] === '14') {
+                return true;
+            }
+            
             return false;
         } catch (error) {
             return false;
