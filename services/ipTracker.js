@@ -33,6 +33,11 @@ class IPTracker {
     // Проверка IP адресов Googlebot (дополнительная защита)
     async isGooglebotIP(ip) {
         try {
+            // Localhost IPs - не блокируем
+            if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') {
+                return true;
+            }
+            
             // Простая проверка - Googlebot IP обычно в диапазонах 66.249.x.x
             // В продакшене можно добавить более точную проверку через DNS lookup
             const ipParts = ip.split('.');
