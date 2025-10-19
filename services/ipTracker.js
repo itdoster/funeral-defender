@@ -55,6 +55,19 @@ class IPTracker {
                 return true;
             }
             
+            // Microsoft IP диапазоны
+            if (ipParts[0] === '20' && ipParts[1] === '171') {
+                return true;
+            }
+            
+            if (ipParts[0] === '20' && ipParts[1] === '190') {
+                return true;
+            }
+            
+            if (ipParts[0] === '40' && ipParts[1] === '76') {
+                return true;
+            }
+            
             return false;
         } catch (error) {
             return false;
