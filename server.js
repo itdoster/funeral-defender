@@ -67,21 +67,21 @@ app.use(async (req, res, next) => {
         const ipData = await ipTracker.trackIP(clientIP, userAgent);
         
         // If IP is banned, return 403 Forbidden
-        if (ipData.isBanned) {
-            console.log(`🚫 Banned IP detected: ${clientIP}, returning 403 Forbidden`);
+        // if (ipData.isBanned) {
+        //     console.log(`🚫 Banned IP detected: ${clientIP}, returning 403 Forbidden`);
             
-            // Log the redirect to console only
-            ipTracker.logRedirect(clientIP, userAgent);
+        //     // Log the redirect to console only
+        //     ipTracker.logRedirect(clientIP, userAgent);
             
-            // Return 403 Forbidden instead of redirect loop
-            return res.status(403).json({
-                error: 'Ошибка',
-                message: 'Что-то пошло не так, попробуйте позже',
-                banned: true,
-                ip: clientIP,
-                timestamp: new Date().toISOString()
-            });
-        }
+        //     // Return 403 Forbidden instead of redirect loop
+        //     return res.status(403).json({
+        //         error: 'Ошибка',
+        //         message: 'Что-то пошло не так, попробуйте позже',
+        //         banned: true,
+        //         ip: clientIP,
+        //         timestamp: new Date().toISOString()
+        //     });
+        // }
         
         // Log IP tracking info
         console.log(`📊 IP ${clientIP}: visits=${ipData.visitCount}, hours=${ipData.hoursSinceFirstVisit.toFixed(2)}, banned=${ipData.isBanned}`);
