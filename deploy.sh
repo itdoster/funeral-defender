@@ -7,14 +7,14 @@ set -e
 
 echo "🚀 Начинаем развертывание Funeral Defender..."
 
-# # Проверка наличия Docker
-# if ! command -v docker &> /dev/null; then
-#     echo "❌ Docker не установлен. Устанавливаем..."
-#     curl -fsSL https://get.docker.com -o get-docker.sh
-#     sudo sh get-docker.sh
-#     sudo usermod -aG docker $USER
-#     rm get-docker.sh
-# fi
+# Проверка наличия Docker
+if ! command -v docker &> /dev/null; then
+    echo "❌ Docker не установлен. Устанавливаем..."
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    sudo usermod -aG docker $USER
+    rm get-docker.sh
+fi
 
 # Проверка наличия Docker Compose
 if ! command -v docker-compose &> /dev/null; then
