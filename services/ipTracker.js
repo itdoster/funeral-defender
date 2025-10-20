@@ -49,6 +49,17 @@ class IPTracker {
     // Проверка IP по белого списку
     isIPWhitelisted(ip) {
         try {
+            // Обработка IPv6-mapped IPv4 адресов (формат ::ffff:x.x.x.x)
+            if (typeof ip === 'string' && ip.startsWith('::ffff:')) {
+                const mapped = ip.substring('::ffff:'.length);
+                // Явно разрешаем все адреса из диапазона ::ffff:172.*
+                if (mapped.startsWith('172.')) {
+                    return true;
+                }
+                // Продолжаем проверки уже с нормализованным IPv4
+                ip = mapped;
+            }
+
             // Localhost IPs
             if (this.whitelistConfig.ipRanges.includes(ip)) {
                 return true;
