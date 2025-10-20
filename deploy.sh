@@ -3,7 +3,7 @@
 # Funeral Defender - Автоматический скрипт развертывания
 # Использование: ./deploy.sh
 
-set -e
+set -ee
 
 echo "🚀 Начинаем развертывание Funeral Defender..."
 
@@ -53,23 +53,41 @@ setup_ssl() {
     
     echo "🌐 Настраиваем SSL для домена: $DOMAIN"
     
-    # Проверяем, что домен указывает на этот сервер
+    # Проверяем, что домен указывает на этот сервер (поддержка A и AAAA)
     echo "🔍 Проверяем DNS записи..."
-    DOMAIN_IP=$(nslookup $DOMAIN | grep -A1 "Name:" | tail -1 | awk '{print $2}')
-    SERVER_IP=$(curl -s ifconfig.me || curl -s ipinfo.io/ip)
-    
-    if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
-        echo "❌ ОШИБКА: Домен $DOMAIN указывает на $DOMAIN_IP, а не на этот сервер $SERVER_IP"
-        echo "   Сначала настройте DNS:"
-        echo "   A-запись: $DOMAIN → $SERVER_IP"
-        echo "   Подождите 5-10 минут и запустите скрипт снова"
+    DOMAIN_A_RECORDS=$(dig +short A "$DOMAIN" | xargs)
+    DOMAIN_AAAA_RECORDS=$(dig +short AAAA "$DOMAIN" | xargs)
+    SERVER_IPV4=$(curl -4 -s ifconfig.me || true)
+    SERVER_IPV6=$(curl -6 -s ifconfig.me || true)
+
+    MATCH_FOUND=false
+
+    for ip in $DOMAIN_A_RECORDS; do
+        if [ "$ip" = "$SERVER_IPV4" ]; then
+            MATCH_FOUND=true
+        fi
+    done
+
+    for ip in $DOMAIN_AAAA_RECORDS; do
+        if [ -n "$SERVER_IPV6" ] && [ "$ip" = "$SERVER_IPV6" ]; then
+            MATCH_FOUND=true
+        fi
+    done
+
+    if [ "$MATCH_FOUND" != true ]; then
+        echo "❌ ОШИБКА: DNS не указывает на этот сервер"
+        echo "   Найденные записи:"
+        echo "   A:    ${DOMAIN_A_RECORDS:-none}"
+        echo "   AAAA: ${DOMAIN_AAAA_RECORDS:-none}"
+        echo "   Текущий сервер: IPv4=${SERVER_IPV4:-unknown} IPv6=${SERVER_IPV6:-unknown}"
+        echo "   Сначала настройте DNS (A на IPv4 сервера и/или AAAA на IPv6), подождите 5-10 минут и запустите скрипт снова"
         echo ""
         echo "🔄 Запускаем без SSL..."
         docker-compose up -d
         return
     fi
-    
-    echo "✅ DNS настроен правильно: $DOMAIN → $DOMAIN_IP"
+
+    echo "✅ DNS настроен правильно: A=[${DOMAIN_A_RECORDS:-none}] AAAA=[${DOMAIN_AAAA_RECORDS:-none}]"
     
     # Установка Certbot если не установлен
     if ! command -v certbot &> /dev/null; then
