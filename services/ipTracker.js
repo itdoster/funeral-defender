@@ -1,9 +1,14 @@
 const pool = require('../config/database');
+const fs = require('fs');
+const path = require('path');
 
 class IPTracker {
     constructor() {
         this.banDurationHours = parseInt(process.env.BAN_DURATION_HOURS) || 4;
         this.allowSearchBots = process.env.ALLOW_SEARCH_BOTS !== 'false';
+        
+        // Загружаем конфигурацию белого списка
+        this.whitelistConfig = this.loadWhitelistConfig();
         
         // Список User-Agent поисковых ботов, которые не должны блокироваться
         this.searchBots = [
@@ -23,6 +28,74 @@ class IPTracker {
         ];
     }
 
+    // Загрузка конфигурации белого списка
+    loadWhitelistConfig() {
+        try {
+            const configPath = path.join(__dirname, '../config/whitelist.json');
+            const configData = fs.readFileSync(configPath, 'utf8');
+            return JSON.parse(configData);
+        } catch (error) {
+            console.error('Error loading whitelist config:', error);
+            return {
+                ipRanges: [],
+                googleRanges: [],
+                microsoftRanges: [],
+                customIPs: [],
+                awsRanges: []
+            };
+        }
+    }
+
+    // Проверка IP по белого списку
+    isIPWhitelisted(ip) {
+        try {
+            // Localhost IPs
+            if (this.whitelistConfig.ipRanges.includes(ip)) {
+                return true;
+            }
+
+            // Точные IP адреса
+            if (this.whitelistConfig.customIPs.includes(ip)) {
+                return true;
+            }
+
+            // Проверка диапазонов
+            const ipParts = ip.split('.');
+            if (ipParts.length !== 4) return false;
+
+            // Google диапазоны
+            for (const range of this.whitelistConfig.googleRanges) {
+                if (this.checkIPRange(ipParts, range)) {
+                    return true;
+                }
+            }
+
+            // Microsoft диапазоны
+            for (const range of this.whitelistConfig.microsoftRanges) {
+                if (this.checkIPRange(ipParts, range)) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (error) {
+            console.error('Error checking IP whitelist:', error);
+            return false;
+        }
+    }
+
+    // Проверка IP диапазона
+    checkIPRange(ipParts, range) {
+        const rangeParts = range.split('.');
+        if (rangeParts.length !== 4) return false;
+
+        for (let i = 0; i < 4; i++) {
+            if (rangeParts[i] === '*') continue;
+            if (ipParts[i] !== rangeParts[i]) return false;
+        }
+        return true;
+    }
+
     // Проверка, является ли User-Agent поисковым ботом
     isSearchBot(userAgent) {
         if (!userAgent) return false;
@@ -30,48 +103,9 @@ class IPTracker {
         return this.searchBots.some(bot => ua.includes(bot));
     }
 
-    // Проверка IP адресов Googlebot (дополнительная защита)
-    async isGooglebotIP(ip) {
-        try {
-            // Localhost IPs - не блокируем
-            if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') {
-                return true;
-            }
-            
-            // Простая проверка - Googlebot IP обычно в диапазонах 66.249.x.x
-            // В продакшене можно добавить более точную проверку через DNS lookup
-            const ipParts = ip.split('.');
-            if (ipParts[0] === '66' && ipParts[1] === '249') {
-                return true;
-            }
-            
-            // Другие известные диапазоны Google
-            if (ipParts[0] === '64' && ipParts[1] === '233') {
-                return true;
-            }
-            
-            // Google IP диапазон 72.14.*
-            if (ipParts[0] === '72' && ipParts[1] === '14') {
-                return true;
-            }
-            
-            // Microsoft IP диапазоны
-            if (ipParts[0] === '20' && ipParts[1] === '171') {
-                return true;
-            }
-            
-            if (ipParts[0] === '20' && ipParts[1] === '190') {
-                return true;
-            }
-            
-            if (ipParts[0] === '40' && ipParts[1] === '76') {
-                return true;
-            }
-            
-            return false;
-        } catch (error) {
-            return false;
-        }
+    // Проверка IP адресов по белого списку (заменяет старый isGooglebotIP)
+    async isIPWhitelistedAsync(ip) {
+        return this.isIPWhitelisted(ip);
     }
 
     async trackIP(ip, userAgent) {
@@ -88,9 +122,9 @@ class IPTracker {
                 };
             }
 
-            // Дополнительная проверка для Googlebot по IP (если разрешено и User-Agent подделан)
-            if (this.allowSearchBots && await this.isGooglebotIP(ip)) {
-                console.log(`🤖 Googlebot IP detected: ${ip} - allowing access`);
+            // Дополнительная проверка по белому списку IP (если разрешено и User-Agent подделан)
+            if (this.allowSearchBots && await this.isIPWhitelistedAsync(ip)) {
+                console.log(`✅ Whitelisted IP detected: ${ip} - allowing access`);
                 return {
                     isBanned: false,
                     visitCount: 0,
