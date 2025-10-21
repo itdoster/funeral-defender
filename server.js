@@ -132,6 +132,27 @@ app.get('/admin/ip/:ip', async (req, res) => {
     });
 });
 
+// Admin endpoint to get banned IPs list
+app.get('/admin/banned-ips', async (req, res) => {
+    try {
+        const bannedIPs = await ipTracker.getBannedIPs();
+        const ipList = bannedIPs.map(record => record.ip_address);
+        
+        res.json({
+            success: true,
+            count: ipList.length,
+            banned_ips: ipList
+        });
+    } catch (error) {
+        console.error('Error getting banned IPs:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error getting banned IPs',
+            error: error.message 
+        });
+    }
+});
+
 // Admin endpoint to unban IP
 app.post('/admin/unban/:ip', async (req, res) => {
     const ip = req.params.ip;
@@ -213,7 +234,10 @@ app.listen(PORT, () => {
     console.log(`🎯 Target URL: ${TARGET_URL}`);
     console.log(`⏰ Ban duration: ${process.env.BAN_DURATION_HOURS || 4} hours`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-    console.log(`📊 Admin endpoint: http://localhost:${PORT}/admin/ip/[IP_ADDRESS]`);
+    console.log(`📊 Admin endpoints:`);
+    console.log(`   - Check IP: http://localhost:${PORT}/admin/ip/[IP_ADDRESS]`);
+    console.log(`   - Banned IPs: http://localhost:${PORT}/admin/banned-ips`);
+    console.log(`   - Unban IP: POST http://localhost:${PORT}/admin/unban/[IP_ADDRESS]`);
     console.log(`\n📋 Environment Configuration:`);
     console.log(`   DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
     console.log(`   DB_PORT: ${process.env.DB_PORT || '5432'}`);
