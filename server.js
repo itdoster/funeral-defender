@@ -45,8 +45,11 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Parse JSON bodies
-app.use(express.json());
+// Parse request bodies for all content types
+app.use(express.json({ limit: '10mb' })); // JSON данные
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Form данные
+app.use(express.text({ limit: '10mb' })); // Plain text
+app.use(express.raw({ limit: '10mb' })); // Binary данные
 
 // Get real IP address (considering proxies and load balancers)
 function getRealIP(req) {
@@ -63,7 +66,7 @@ app.use(async (req, res, next) => {
     const clientIP = getRealIP(req);
     const userAgent = req.headers['user-agent'] || '';
     
-    console.log(`🔍 Request from IP: ${clientIP}, User-Agent: ${userAgent.substring(0, 100)}...`);
+    console.log(`🔍 ${req.method} Request from IP: ${clientIP}, User-Agent: ${userAgent.substring(0, 100)}...`);
     
     try {
         // Track the IP with Google Ads params
@@ -184,11 +187,28 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Handle OPTIONS requests (CORS preflight)
+app.options('*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Forwarded-For, X-Real-IP');
+    res.header('Access-Control-Max-Age', '86400');
+    res.sendStatus(200);
+});
+
 // Proxy middleware for legitimate traffic
 const proxyOptions = {
     target: TARGET_URL,
     changeOrigin: true,
     followRedirects: false, // Отключаем автоматические редиректы
+    // Поддерживаем все HTTP методы
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'],
+    // Поддерживаем все типы контента
+    secure: true,
+    // Перезаписываем заголовки
+    headers: {
+        'Connection': 'keep-alive'
+    },
     onProxyReq: (proxyReq, req, res) => {
         // Forward original IP
         proxyReq.setHeader('X-Forwarded-For', req.clientIP || getRealIP(req));
@@ -198,27 +218,63 @@ const proxyOptions = {
         // Тильда ожидает свой домен в Host заголовке
         proxyReq.setHeader('Host', 'pohorony-minsk.by');
         
-        // Добавляем заголовки для совместимости с Тильдой
-        proxyReq.setHeader('User-Agent', req.headers['user-agent'] || 'Mozilla/5.0 (compatible; Funeral-Defender/1.0)');
-        proxyReq.setHeader('Accept', req.headers.accept || 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
-        proxyReq.setHeader('Accept-Language', req.headers['accept-language'] || 'en-US,en;q=0.5');
-        proxyReq.setHeader('Accept-Encoding', req.headers['accept-encoding'] || 'gzip, deflate');
-        proxyReq.setHeader('Connection', 'keep-alive');
+        // Передаем оригинальный метод запроса
+        proxyReq.method = req.method;
         
-        // Передаем оригинальный Referer если есть
-        if (req.headers.referer) {
-            proxyReq.setHeader('Referer', req.headers.referer);
+        // Передаем оригинальный путь и query параметры
+        proxyReq.path = req.url;
+        
+        // Передаем все оригинальные заголовки (кроме Host)
+        Object.keys(req.headers).forEach(key => {
+            if (key.toLowerCase() !== 'host') {
+                proxyReq.setHeader(key, req.headers[key]);
+            }
+        });
+        
+        // Добавляем заголовки для совместимости с Тильдой
+        if (!req.headers['user-agent']) {
+            proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (compatible; Funeral-Defender/1.0)');
+        }
+        if (!req.headers['accept']) {
+            proxyReq.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
+        }
+        if (!req.headers['accept-language']) {
+            proxyReq.setHeader('Accept-Language', 'en-US,en;q=0.5');
+        }
+        if (!req.headers['accept-encoding']) {
+            proxyReq.setHeader('Accept-Encoding', 'gzip, deflate');
         }
         
-        console.log(`✅ Proxying request for IP: ${req.clientIP || getRealIP(req)}`);
-        console.log(`🎯 Target: ${TARGET_URL}, Host: pohorony-minsk.by`);
+        // Для POST/PUT/PATCH запросов передаем Content-Type
+        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+            if (req.headers['content-type']) {
+                proxyReq.setHeader('Content-Type', req.headers['content-type']);
+            }
+            if (req.headers['content-length']) {
+                proxyReq.setHeader('Content-Length', req.headers['content-length']);
+            }
+        }
+        
+        console.log(`✅ Proxying ${req.method} request for IP: ${req.clientIP || getRealIP(req)}`);
+        console.log(`🎯 Target: ${TARGET_URL}, Host: pohorony-minsk.by, Path: ${req.url}`);
     },
     onError: (err, req, res) => {
         console.error('Proxy error:', err);
         res.status(500).json({ error: 'Proxy error occurred' });
     },
     onProxyRes: (proxyRes, req, res) => {
-        console.log(`📤 Response sent to IP: ${req.clientIP || getRealIP(req)}, Status: ${proxyRes.statusCode}`);
+        console.log(`📤 ${req.method} Response sent to IP: ${req.clientIP || getRealIP(req)}, Status: ${proxyRes.statusCode}`);
+        
+        // Обрабатываем редиректы от Тильды
+        if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400) {
+            const location = proxyRes.headers.location;
+            if (location) {
+                // Заменяем домен Тильды на наш домен в редиректах
+                const newLocation = location.replace(/pohorony-minsk\.tilda\.ws/g, 'pohorony-minsk.by');
+                proxyRes.headers.location = newLocation;
+                console.log(`🔄 Redirect: ${location} → ${newLocation}`);
+            }
+        }
     }
 };
 
@@ -246,6 +302,7 @@ async function startServer() {
             console.log(`🚀 Funeral Defender Proxy Server running on port ${PORT}`);
             console.log(`🎯 Target URL: ${TARGET_URL}`);
             console.log(`⏰ Ban duration: ${process.env.BAN_DURATION_HOURS || 4} hours`);
+            console.log(`🔄 Supported methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS`);
             console.log(`🔗 Health check: http://localhost:${PORT}/health`);
             console.log(`📊 Admin endpoints:`);
             console.log(`   - Check IP: http://localhost:${PORT}/admin/ip/[IP_ADDRESS]`);
