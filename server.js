@@ -6,10 +6,13 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const ipTracker = require('./services/ipTracker');
+const pool = require('./config/database');
+const { runDatabaseMigration } = require('./migrations/migrate');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const TARGET_URL = process.env.TARGET_URL || 'https://pohorony-minsk.by';
+
 
 // Настройка trust proxy для работы с заголовками от nginx
 // Указываем конкретные IP адреса прокси-серверов
@@ -63,8 +66,8 @@ app.use(async (req, res, next) => {
     console.log(`🔍 Request from IP: ${clientIP}, User-Agent: ${userAgent.substring(0, 100)}...`);
     
     try {
-        // Track the IP
-        const ipData = await ipTracker.trackIP(clientIP, userAgent);
+        // Track the IP with Google Ads params
+        const ipData = await ipTracker.trackIP(clientIP, userAgent, req);
         
         // If IP is banned, return 403 Forbidden
         // if (ipData.isBanned) {
@@ -228,27 +231,46 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`🚀 Funeral Defender Proxy Server running on port ${PORT}`);
-    console.log(`🎯 Target URL: ${TARGET_URL}`);
-    console.log(`⏰ Ban duration: ${process.env.BAN_DURATION_HOURS || 4} hours`);
-    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-    console.log(`📊 Admin endpoints:`);
-    console.log(`   - Check IP: http://localhost:${PORT}/admin/ip/[IP_ADDRESS]`);
-    console.log(`   - Banned IPs: http://localhost:${PORT}/admin/banned-ips`);
-    console.log(`   - Unban IP: POST http://localhost:${PORT}/admin/unban/[IP_ADDRESS]`);
-    console.log(`\n📋 Environment Configuration:`);
-    console.log(`   DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
-    console.log(`   DB_PORT: ${process.env.DB_PORT || '5432'}`);
-    console.log(`   DB_NAME: ${process.env.DB_NAME || 'funeral_defender'}`);
-    console.log(`   TARGET_URL: ${process.env.TARGET_URL || 'https://pohorony-minsk.by'}`);
-    console.log(`   BAN_DURATION_HOURS: ${process.env.BAN_DURATION_HOURS || '4'}`);
-    console.log(`   REDIRECT_DELAY_MS: ${process.env.REDIRECT_DELAY_MS || '1000'}`);
-    console.log(`   ALLOW_SEARCH_BOTS: ${process.env.ALLOW_SEARCH_BOTS || 'true'}`);
-    console.log(`   DOMAIN: ${process.env.DOMAIN || 'not set'}`);
-    console.log(`   Trust Proxy: ${app.get('trust proxy')}`);
-});
+// Start server with auto-migration
+async function startServer() {
+    try {
+        // Запускаем миграцию базы данных
+        const migrationSuccess = await runDatabaseMigration();
+        
+        if (!migrationSuccess) {
+            console.log('⚠️  Migration had issues, but continuing with application startup...');
+        }
+        
+        // Запускаем сервер
+        app.listen(PORT, () => {
+            console.log(`🚀 Funeral Defender Proxy Server running on port ${PORT}`);
+            console.log(`🎯 Target URL: ${TARGET_URL}`);
+            console.log(`⏰ Ban duration: ${process.env.BAN_DURATION_HOURS || 4} hours`);
+            console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+            console.log(`📊 Admin endpoints:`);
+            console.log(`   - Check IP: http://localhost:${PORT}/admin/ip/[IP_ADDRESS]`);
+            console.log(`   - Banned IPs: http://localhost:${PORT}/admin/banned-ips`);
+            console.log(`   - Ads Stats: http://localhost:${PORT}/admin/ads-stats`);
+            console.log(`   - Unban IP: POST http://localhost:${PORT}/admin/unban/[IP_ADDRESS]`);
+            console.log(`\n📋 Environment Configuration:`);
+            console.log(`   DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
+            console.log(`   DB_PORT: ${process.env.DB_PORT || '5432'}`);
+            console.log(`   DB_NAME: ${process.env.DB_NAME || 'funeral_defender'}`);
+            console.log(`   TARGET_URL: ${process.env.TARGET_URL || 'https://pohorony-minsk.by'}`);
+            console.log(`   BAN_DURATION_HOURS: ${process.env.BAN_DURATION_HOURS || '4'}`);
+            console.log(`   REDIRECT_DELAY_MS: ${process.env.REDIRECT_DELAY_MS || '1000'}`);
+            console.log(`   ALLOW_SEARCH_BOTS: ${process.env.ALLOW_SEARCH_BOTS || 'true'}`);
+            console.log(`   DOMAIN: ${process.env.DOMAIN || 'not set'}`);
+            console.log(`   Trust Proxy: ${app.get('trust proxy')}`);
+        });
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+// Запускаем сервер
+startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

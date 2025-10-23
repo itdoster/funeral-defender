@@ -119,8 +119,32 @@ class IPTracker {
         return this.isIPWhitelisted(ip);
     }
 
-    async trackIP(ip, userAgent) {
+    // Извлечение Google Ads параметров из URL
+    extractGoogleAdsParams(req) {
+        const params = {};
+        const query = req.query || {};
+        
+        // Google Ads параметры
+        if (query.gclid) params.gclid = query.gclid;
+        if (query.gclsrc) params.gclsrc = query.gclsrc;
+        if (query.gbraid) params.gbraid = query.gbraid;
+        if (query.wbraid) params.wbraid = query.wbraid;
+        
+        // UTM параметры
+        if (query.utm_source) params.utm_source = query.utm_source;
+        if (query.utm_medium) params.utm_medium = query.utm_medium;
+        if (query.utm_campaign) params.utm_campaign = query.utm_campaign;
+        if (query.utm_term) params.utm_term = query.utm_term;
+        if (query.utm_content) params.utm_content = query.utm_content;
+        
+        return params;
+    }
+
+    async trackIP(ip, userAgent, req = null) {
         try {
+            // Извлекаем Google Ads параметры из запроса
+            const adsParams = req ? this.extractGoogleAdsParams(req) : {};
+            
             // Поисковые боты не отслеживаются и не блокируются (если разрешено)
             if (this.allowSearchBots && this.isSearchBot(userAgent)) {
                 console.log(`🤖 Search bot detected: ${userAgent.substring(0, 50)}..., IP: ${ip} - allowing access`);
@@ -167,11 +191,32 @@ class IPTracker {
                     console.log(`🚫 IP ${ip} has been banned after ${hoursSinceFirstVisit.toFixed(2)} hours`);
                 }
 
-                // Update visit count and last visit
-                await pool.query(
-                    'UPDATE ip_tracking SET visit_count = visit_count + 1, last_visit = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE ip_address = $1',
-                    [ip]
-                );
+                // Update visit count, last visit and Google Ads params (only if new params exist)
+                const hasNewAdsParams = Object.keys(adsParams).length > 0;
+                if (hasNewAdsParams) {
+                    const updateFields = ['visit_count = visit_count + 1', 'last_visit = CURRENT_TIMESTAMP', 'updated_at = CURRENT_TIMESTAMP'];
+                    const updateValues = [ip];
+                    let paramIndex = 2;
+
+                    // Добавляем Google Ads параметры в UPDATE запрос
+                    for (const [key, value] of Object.entries(adsParams)) {
+                        updateFields.push(`${key} = $${paramIndex}`);
+                        updateValues.push(value);
+                        paramIndex++;
+                    }
+
+                    await pool.query(
+                        `UPDATE ip_tracking SET ${updateFields.join(', ')} WHERE ip_address = $1`,
+                        updateValues
+                    );
+                    console.log(`📊 Updated IP ${ip} with Google Ads params:`, adsParams);
+                } else {
+                    // Обычное обновление без Google Ads параметров
+                    await pool.query(
+                        'UPDATE ip_tracking SET visit_count = visit_count + 1, last_visit = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE ip_address = $1',
+                        [ip]
+                    );
+                }
 
                 return {
                     isBanned: record.is_banned || hoursSinceFirstVisit >= this.banDurationHours,
@@ -180,12 +225,30 @@ class IPTracker {
                     hoursSinceFirstVisit: hoursSinceFirstVisit
                 };
             } else {
-                // Insert new IP
+                // Insert new IP with Google Ads params
+                const insertFields = ['ip_address', 'user_agent'];
+                const insertValues = [ip, userAgent];
+                const placeholders = ['$1', '$2'];
+                let paramIndex = 3;
+
+                // Добавляем Google Ads параметры в INSERT запрос
+                for (const [key, value] of Object.entries(adsParams)) {
+                    insertFields.push(key);
+                    insertValues.push(value);
+                    placeholders.push(`$${paramIndex}`);
+                    paramIndex++;
+                }
+
                 const result = await pool.query(
-                    'INSERT INTO ip_tracking (ip_address, user_agent) VALUES ($1, $2) RETURNING *',
-                    [ip, userAgent]
+                    `INSERT INTO ip_tracking (${insertFields.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING *`,
+                    insertValues
                 );
-                console.log(`📝 New IP tracked: ${ip}`);
+                
+                if (Object.keys(adsParams).length > 0) {
+                    console.log(`📝 New IP tracked: ${ip} with Google Ads params:`, adsParams);
+                } else {
+                    console.log(`📝 New IP tracked: ${ip}`);
+                }
                 
                 return {
                     isBanned: false,

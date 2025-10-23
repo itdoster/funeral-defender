@@ -12,6 +12,16 @@ CREATE TABLE IF NOT EXISTS ip_tracking (
     is_banned BOOLEAN DEFAULT FALSE,
     banned_at TIMESTAMP WITH TIME ZONE,
     user_agent TEXT,
+    -- Google Ads parameters
+    gclid TEXT, -- Google Click ID
+    gclsrc TEXT, -- Google Click Source
+    gbraid TEXT, -- Google Ads Conversion Tracking
+    wbraid TEXT, -- Google Ads Conversion Tracking
+    utm_source TEXT, -- UTM Source
+    utm_medium TEXT, -- UTM Medium
+    utm_campaign TEXT, -- UTM Campaign
+    utm_term TEXT, -- UTM Term
+    utm_content TEXT, -- UTM Content
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(ip_address)
@@ -21,6 +31,10 @@ CREATE TABLE IF NOT EXISTS ip_tracking (
 CREATE INDEX IF NOT EXISTS idx_ip_tracking_ip_address ON ip_tracking(ip_address);
 CREATE INDEX IF NOT EXISTS idx_ip_tracking_is_banned ON ip_tracking(is_banned);
 CREATE INDEX IF NOT EXISTS idx_ip_tracking_banned_at ON ip_tracking(banned_at);
+-- Indexes for Google Ads parameters
+CREATE INDEX IF NOT EXISTS idx_ip_tracking_gclid ON ip_tracking(gclid);
+CREATE INDEX IF NOT EXISTS idx_ip_tracking_utm_campaign ON ip_tracking(utm_campaign);
+CREATE INDEX IF NOT EXISTS idx_ip_tracking_utm_source ON ip_tracking(utm_source);
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
