@@ -245,7 +245,7 @@ const proxyOptions = {
             proxyReq.setHeader('Accept-Encoding', 'gzip, deflate');
         }
         
-        // Для POST/PUT/PATCH запросов передаем Content-Type
+        // Для POST/PUT/PATCH запросов передаем все необходимые заголовки
         if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
             if (req.headers['content-type']) {
                 proxyReq.setHeader('Content-Type', req.headers['content-type']);
@@ -253,10 +253,25 @@ const proxyOptions = {
             if (req.headers['content-length']) {
                 proxyReq.setHeader('Content-Length', req.headers['content-length']);
             }
+            if (req.headers['origin']) {
+                proxyReq.setHeader('Origin', req.headers['origin']);
+            }
+            if (req.headers['referer']) {
+                proxyReq.setHeader('Referer', req.headers['referer']);
+            }
         }
         
         console.log(`✅ Proxying ${req.method} request for IP: ${req.clientIP || getRealIP(req)}`);
         console.log(`🎯 Target: ${TARGET_URL}, Host: pohorony-minsk.by, Path: ${req.url}`);
+        
+        // Дополнительное логирование для POST запросов
+        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+            console.log(`📋 Content-Type: ${req.headers['content-type'] || 'not set'}`);
+            console.log(`📋 Content-Length: ${req.headers['content-length'] || 'not set'}`);
+            if (req.body && Object.keys(req.body).length > 0) {
+                console.log(`📋 Body keys: ${Object.keys(req.body).join(', ')}`);
+            }
+        }
     },
     onError: (err, req, res) => {
         console.error('Proxy error:', err);
