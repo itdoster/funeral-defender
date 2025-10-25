@@ -127,19 +127,27 @@ app.get('/redirect-*', async (req, res) => {
     }, parseInt(process.env.REDIRECT_DELAY_MS) || 1000);
 });
 
+// Проксируем формы Тильды напрямую на forms.tildaapi.biz
 app.use('/tilda-form', createProxyMiddleware({
     target: 'https://forms.tildaapi.biz',
     changeOrigin: true,
-    pathRewrite: { '^/tilda-form': '/procces/' },
     secure: true,
+    pathRewrite: { '^/tilda-form': '/procces/' },
     onProxyReq: (proxyReq, req) => {
-      // Подменяем Origin и Referer на "тильдовские"
-      proxyReq.setHeader('Origin', 'https://pohorony-minsk.tilda.ws');
-      proxyReq.setHeader('Referer', 'https://pohorony-minsk.tilda.ws/');
-      proxyReq.setHeader('Host', 'forms.tildaapi.biz');
+      // Передаём тело запроса как есть
+      if (req.body && Object.keys(req.body).length) {
+        const bodyData = new URLSearchParams(req.body).toString();
+        proxyReq.setHeader('Content-Type', 'application/x-www-form-urlencoded');
+        proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+        proxyReq.write(bodyData);
+      }
     },
-    onProxyRes: (proxyRes) => {
-      console.log('📨 Form proxied successfully with status', proxyRes.statusCode);
+    onError: (err, req, res) => {
+      console.error('❌ Ошибка при проксировании формы Тильды:', err);
+      res.status(502).json({ error: 'Ошибка прокси при отправке формы на Тильду' });
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      console.log(`📨 Ответ Тильды: ${proxyRes.statusCode}`);
     }
   }));
 
