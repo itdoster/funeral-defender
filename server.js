@@ -46,8 +46,9 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Parse request bodies for all content types
+// Важно: порядок имеет значение! Сначала urlencoded, потом json
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Form данные (application/x-www-form-urlencoded)
 app.use(express.json({ limit: '10mb' })); // JSON данные
-app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Form данные
 app.use(express.text({ limit: '10mb' })); // Plain text
 app.use(express.raw({ limit: '10mb' })); // Binary данные
 
@@ -65,7 +66,7 @@ function getRealIP(req) {
 app.use(async (req, res, next) => {
     const clientIP = getRealIP(req);
     const userAgent = req.headers['user-agent'] || '';
-    
+    res.header('Access-Control-Allow-Origin', '*');
     console.log(`🔍 ${req.method} Request from IP: ${clientIP}, User-Agent: ${userAgent.substring(0, 100)}...`);
     
     try {
@@ -268,8 +269,11 @@ const proxyOptions = {
         if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
             console.log(`📋 Content-Type: ${req.headers['content-type'] || 'not set'}`);
             console.log(`📋 Content-Length: ${req.headers['content-length'] || 'not set'}`);
+            console.log(`📋 Origin: ${req.headers['origin'] || 'not set'}`);
+            console.log(`📋 Referer: ${req.headers['referer'] || 'not set'}`);
             if (req.body && Object.keys(req.body).length > 0) {
                 console.log(`📋 Body keys: ${Object.keys(req.body).join(', ')}`);
+                console.log(`📋 Body sample:`, JSON.stringify(req.body).substring(0, 200) + '...');
             }
         }
     },
@@ -279,6 +283,12 @@ const proxyOptions = {
     },
     onProxyRes: (proxyRes, req, res) => {
         console.log(`📤 ${req.method} Response sent to IP: ${req.clientIP || getRealIP(req)}, Status: ${proxyRes.statusCode}`);
+        
+        // Дополнительное логирование для POST запросов
+        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+            console.log(`📤 Response Content-Type: ${proxyRes.headers['content-type'] || 'not set'}`);
+            console.log(`📤 Response Location: ${proxyRes.headers['location'] || 'not set'}`);
+        }
         
         // Обрабатываем редиректы от Тильды
         if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400) {
@@ -292,6 +302,24 @@ const proxyOptions = {
         }
     }
 };
+
+// Специальная обработка для форм Тильды перед основным прокси
+app.post('*', (req, res, next) => {
+    const clientIP = getRealIP(req);
+    const userAgent = req.headers['user-agent'] || '';
+    
+    console.log(`📝 FORM POST detected from IP: ${clientIP}, Path: ${req.url}`);
+    console.log(`📋 Content-Type: ${req.headers['content-type'] || 'not set'}`);
+    console.log(`📋 Origin: ${req.headers['origin'] || 'not set'}`);
+    console.log(`📋 Referer: ${req.headers['referer'] || 'not set'}`);
+    
+    if (req.body && Object.keys(req.body).length > 0) {
+        console.log(`📋 Form data received:`, req.body);
+    }
+    
+    // Продолжаем к основному прокси
+    next();
+});
 
 // Apply proxy to all other routes
 app.use('/', createProxyMiddleware(proxyOptions));
