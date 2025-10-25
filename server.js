@@ -3,6 +3,7 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const TelegramBot = require('node-telegram-bot-api');
 require('dotenv').config();
 
 const ipTracker = require('./services/ipTracker');
@@ -12,6 +13,19 @@ const { runDatabaseMigration } = require('./migrations/migrate');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const TARGET_URL = process.env.TARGET_URL || 'https://pohorony-minsk.by';
+
+// Инициализация Telegram бота
+let telegramBot = null;
+if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+    try {
+        telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
+        console.log('✅ Telegram бот инициализирован');
+    } catch (error) {
+        console.error('❌ Ошибка инициализации Telegram бота:', error);
+    }
+} else {
+    console.log('⚠️ Telegram бот не настроен (отсутствуют TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID)');
+}
 
 
 // Настройка trust proxy для работы с заголовками от nginx
@@ -127,29 +141,63 @@ app.get('/redirect-*', async (req, res) => {
     }, parseInt(process.env.REDIRECT_DELAY_MS) || 1000);
 });
 
-// Проксируем формы Тильды напрямую на forms.tildaapi.biz
-app.use('/tilda-form', createProxyMiddleware({
-    target: 'https://forms.tildaapi.biz',
-    changeOrigin: true,
-    secure: true,
-    pathRewrite: { '^/tilda-form': '/procces/' },
-    onProxyReq: (proxyReq, req) => {
-      // Передаём тело запроса как есть
-      if (req.body && Object.keys(req.body).length) {
-        const bodyData = new URLSearchParams(req.body).toString();
-        proxyReq.setHeader('Content-Type', 'application/x-www-form-urlencoded');
-        proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-        proxyReq.write(bodyData);
-      }
-    },
-    onError: (err, req, res) => {
-      console.error('❌ Ошибка при проксировании формы Тильды:', err);
-      res.status(502).json({ error: 'Ошибка прокси при отправке формы на Тильду' });
-    },
-    onProxyRes: (proxyRes, req, res) => {
-      console.log(`📨 Ответ Тильды: ${proxyRes.statusCode}`);
+// Endpoint для отправки формы в телеграм чат
+app.post('/tilda-form', async (req, res) => {
+    try {
+        const formData = req.body;
+        console.log('📨 Получена форма:', formData);
+        
+        // Парсим данные формы
+        const parsedData = {};
+        for (const [key, value] of Object.entries(formData)) {
+            if (key === 'Name') parsedData['Имя'] = value;
+            else if (key === 'Phone') parsedData['Телефон'] = value;
+            else if (key === 'Textarea') parsedData['Сообщение'] = value;
+            else if (key === 'tildaspec-referer') parsedData['Источник'] = decodeURIComponent(value);
+            else if (key === 'tildaspec-formid') parsedData['ID формы'] = value;
+            else if (key === 'tildaspec-pageid') parsedData['ID страницы'] = value;
+        }
+        
+        // Формируем сообщение для телеграм
+        const message = `🎯 *Новая заявка с сайта*\n\n` +
+            `👤 *Имя:* ${parsedData['Имя'] || 'Не указано'}\n` +
+            `📞 *Телефон:* ${parsedData['Телефон'] || 'Не указан'}\n` +
+            `💬 *Сообщение:* ${parsedData['Сообщение'] || 'Не указано'}\n` +
+            `🌐 *Источник:* ${parsedData['Источник'] || 'Не указан'}\n` +
+            `🆔 *ID формы:* ${parsedData['ID формы'] || 'Не указан'}\n` +
+            `📄 *ID страницы:* ${parsedData['ID страницы'] || 'Не указан'}\n\n` +
+            `⏰ *Время:* ${new Date().toLocaleString('ru-RU')}\n` +
+            `🌍 *IP:* ${req.clientIP || getRealIP(req)}`;
+        
+        // Отправляем в телеграм (если настроен бот)
+        if (telegramBot) {
+            try {
+                await telegramBot.sendMessage(process.env.TELEGRAM_CHAT_ID, message, {
+                    parse_mode: 'Markdown'
+                });
+                console.log('✅ Сообщение отправлено в телеграм');
+            } catch (telegramError) {
+                console.error('❌ Ошибка при отправке в телеграм:', telegramError);
+            }
+        } else {
+            console.log('⚠️ Telegram бот не настроен. Данные формы:');
+            console.log(message);
+        }
+        
+        // Возвращаем успешный ответ (имитируем ответ Тильды)
+        res.status(200).json({
+            success: true,
+            message: 'Форма успешно обработана'
+        });
+        
+    } catch (error) {
+        console.error('❌ Ошибка при обработке формы:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка при обработке формы'
+        });
     }
-  }));
+});
 
 // Admin endpoint to check IP status
 app.get('/admin/ip/:ip', async (req, res) => {

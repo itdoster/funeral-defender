@@ -8,21 +8,25 @@
     "dev": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["proxy", "bot-protection", "funeral-services"],
+  "keywords": [
+    "proxy",
+    "bot-protection",
+    "funeral-services"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "http-proxy-middleware": "^2.0.6",
-    "pg": "^8.11.3",
-    "dotenv": "^16.3.1",
-    "helmet": "^7.1.0",
+    "axios": "^1.6.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
-    "axios": "^1.6.0"
+    "helmet": "^7.1.0",
+    "http-proxy-middleware": "^2.0.6",
+    "node-telegram-bot-api": "^0.66.0",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
   }
 }
-
