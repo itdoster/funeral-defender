@@ -337,6 +337,15 @@ app.post('*', (req, res, next) => {
     next();
 });
 
+// Serve sw.js directly without proxying
+app.get('/sw.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(__dirname + '/sw.js');
+});
+
 // Apply proxy to all other routes
 app.use('/', createProxyMiddleware(proxyOptions));
 
