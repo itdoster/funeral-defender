@@ -127,6 +127,14 @@ app.get('/redirect-*', async (req, res) => {
     }, parseInt(process.env.REDIRECT_DELAY_MS) || 1000);
 });
 
+app.post('/tilda-form', createProxyMiddleware({
+    target: 'https://forms.tildacdn.com',
+    changeOrigin: true,
+    pathRewrite: { '^/tilda-form': '' },
+    secure: true,
+    headers: { host: 'forms.tildacdn.com' },
+  }));
+
 // Admin endpoint to check IP status
 app.get('/admin/ip/:ip', async (req, res) => {
     const ip = req.params.ip;
