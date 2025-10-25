@@ -127,12 +127,20 @@ app.get('/redirect-*', async (req, res) => {
     }, parseInt(process.env.REDIRECT_DELAY_MS) || 1000);
 });
 
-app.post('/tilda-form', createProxyMiddleware({
-    target: 'https://forms.tildacdn.com',
+app.use('/tilda-form', createProxyMiddleware({
+    target: 'https://forms.tildaapi.biz',
     changeOrigin: true,
-    pathRewrite: { '^/tilda-form': '' },
+    pathRewrite: { '^/tilda-form': '/procces/' },
     secure: true,
-    headers: { host: 'forms.tildacdn.com' },
+    onProxyReq: (proxyReq, req) => {
+      // Подменяем Origin и Referer на "тильдовские"
+      proxyReq.setHeader('Origin', 'https://pohorony-minsk.tilda.ws');
+      proxyReq.setHeader('Referer', 'https://pohorony-minsk.tilda.ws/');
+      proxyReq.setHeader('Host', 'forms.tildaapi.biz');
+    },
+    onProxyRes: (proxyRes) => {
+      console.log('📨 Form proxied successfully with status', proxyRes.statusCode);
+    }
   }));
 
 // Admin endpoint to check IP status
