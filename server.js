@@ -158,17 +158,29 @@ app.post('/tilda-form', async (req, res) => {
             else if (key === 'tildaspec-pageid') parsedData['ID страницы'] = value;
         }
         
+        // Функция для экранирования спецсимволов Markdown
+        const escapeMarkdown = (text) => {
+            if (!text) return text;
+            return String(text).replace(/\*/g, '\\*').replace(/_/g, '\\_').replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+        };
+
+        // Функция для экранирования текста ссылки (без квадратных скобок)
+        const escapeMarkdownText = (text) => {
+            if (!text) return text;
+            return String(text).replace(/\*/g, '\\*').replace(/_/g, '\\_');
+        };
+
         // Формируем сообщение для телеграм
         const phone = parsedData['Телефон'] || 'Не указан';
-        const phoneLink = phone !== 'Не указан' ? `[${phone}](tel:${phone.replace(/\D/g,'')})` : phone;
+        const phoneLink = phone !== 'Не указан' ? `[${escapeMarkdownText(phone)}](tel:${phone.replace(/\D/g,'')})` : escapeMarkdown(phone);
 
         const message = `🎯 *Новая заявка с сайта*\n\n` +
-            `👤 *Имя:* ${parsedData['Имя'] || 'Не указано'}\n` +
+            `👤 *Имя:* ${escapeMarkdown(parsedData['Имя']) || 'Не указано'}\n` +
             `📞 *Телефон:* ${phoneLink}\n` +
-            `💬 *Сообщение:* ${parsedData['Сообщение'] || 'Не указано'}\n` +
-            `🌐 *Источник:* ${parsedData['Источник'] || 'Не указан'}\n` +
-            `🆔 *ID формы:* ${parsedData['ID формы'] || 'Не указан'}\n` +
-            `📄 *ID страницы:* ${parsedData['ID страницы'] || 'Не указан'}\n\n` +
+            `💬 *Сообщение:* ${escapeMarkdown(parsedData['Сообщение']) || 'Не указано'}\n` +
+            `🌐 *Источник:* ${escapeMarkdown(parsedData['Источник']) || 'Не указан'}\n` +
+            `🆔 *ID формы:* ${escapeMarkdown(parsedData['ID формы']) || 'Не указан'}\n` +
+            `📄 *ID страницы:* ${escapeMarkdown(parsedData['ID страницы']) || 'Не указан'}\n\n` +
             `⏰ *Время:* ${new Date().toLocaleString('ru-RU')}\n` +
             `🌍 *IP:* ${req.clientIP || getRealIP(req)}`;
         
